@@ -197,7 +197,12 @@ nav {
 }
 
 .hero-text .line-mask {
-  overflow: visible !important;
+  overflow: visible;
+}
+
+/* During animation, clip the content */
+.hero-text .line-mask.animating {
+  overflow: hidden;
 }
 
 .hero-buttons {
@@ -2427,8 +2432,8 @@ footer {
 }
 
 .footer-gif-wrapper {
-  width: 100px;
-  height: 100px;
+  width: 150px;
+  height: 150px;
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid var(--border-tertiary);
@@ -2601,6 +2606,42 @@ footer {
     width: 100%;
   }
 }
+
+/* Visitor Counter */
+.footer-grid-item.visitor-col {
+  align-items: center;
+  justify-content: center;
+}
+
+.visitor-counter {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 0.9em;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 0.6em 1.2em;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.visitor-counter i {
+  font-size: 1.1em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.visitor-count {
+  font-family: "Ot-medium", sans-serif;
+  font-size: 1.1em;
+  color: #ffffff;
+}
+
+.visitor-label {
+  color: rgba(255, 255, 255, 0.5);
+}
+
 /* === Glassmorphism Card (Hero Right) === */
 .glass-card-container {
   position: relative;

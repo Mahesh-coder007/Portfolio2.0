@@ -11,12 +11,16 @@ if (localStorage.getItem("theme") === "dark") {
 // HERO ANIMATIONS
 function playHeroAnimations() {
   const heroLines = document.querySelectorAll(".hero h1 .line-mask > span");
+  const heroLineMasks = document.querySelectorAll(".hero h1 .line-mask");
   const heroImage =
     document.querySelector(".glass-card-container") ||
     document.querySelector(".hero-img-container");
   const doodleBlocks = document.querySelectorAll(".hero-inline-images .inline-block");
 
   const tl = gsap.timeline();
+
+  // Add animating class for overflow:hidden during animation
+  heroLineMasks.forEach(mask => mask.classList.add("animating"));
 
   if (heroLines.length > 0) {
     tl.from(heroLines, {
@@ -25,6 +29,10 @@ function playHeroAnimations() {
       duration: 1.2,
       ease: "power4.out",
       stagger: 0.1,
+      onComplete: () => {
+        // Remove animating class after animation - allows doodles to show fully
+        heroLineMasks.forEach(mask => mask.classList.remove("animating"));
+      }
     });
   }
 
@@ -122,7 +130,6 @@ function initHeroDepthParallax() {
 function initPreloader() {
   const container = document.querySelector("#preloader");
   const ball = document.querySelector("#loader-ball");
-  const letters = document.querySelectorAll("#preloader-text span");
   const face = document.querySelector(".face");
 
   if (!container) {
@@ -148,11 +155,15 @@ function initPreloader() {
 
   if (ball) gsap.set(ball, { scale: 0, autoAlpha: 1 });
 
+  // OPTIMIZED: All animations run in parallel from "start" label
+  const totalDuration = 3; // 4 seconds total (3s main + 1s exit)
+
+  // Counter animation - runs in parallel
   if (counterElement) {
     let counterObj = { val: 0 };
     tl.to(counterObj, {
       val: 100,
-      duration: 3.5,
+      duration: totalDuration,
       ease: "power2.inOut",
       onUpdate: () => {
         counterElement.textContent = Math.floor(counterObj.val) + "%";
@@ -160,8 +171,9 @@ function initPreloader() {
     }, "start");
   }
 
+  // Text cycling - runs in parallel with counter
   if (textElement) {
-    let textDuration = 3.5 / words.length;
+    let textDuration = totalDuration / words.length;
     
     words.forEach((word, index) => {
       const isLast = index === words.length - 1;
@@ -173,62 +185,58 @@ function initPreloader() {
 
       tl.fromTo(textElement, 
         { opacity: 0, y: 10 }, 
-        { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" },
+        { opacity: 1, y: 0, duration: 0.2, ease: "power2.out" },
         "start+=" + startTime
       );
 
       if (!isLast) {
         tl.to(textElement, 
-          { opacity: 0, y: -10, duration: 0.3, ease: "power2.in" }, 
-          "start+=" + (startTime + textDuration - 0.3)
+          { opacity: 0, y: -10, duration: 0.2, ease: "power2.in" }, 
+          "start+=" + (startTime + textDuration - 0.2)
         );
       }
     });
   }
 
-   if (ball) {
-    tl.to(
-      ball,
-      {
-        scale: 1,
-        duration: 0.5,
-        ease: "elastic.out(1, 0.5)",
-      },
-      "start+=0.2"
-    );
-  }
-
+  // Ball entrance - runs in parallel from start
   if (ball) {
-    tl
-      .call(() => {
-        if (!ball) return;
-        const ballRect = ball.getBoundingClientRect();
-        const dropDist = window.innerHeight - ballRect.bottom - 40;
+    tl.to(ball, {
+      scale: 1,
+      duration: 0.4,
+      ease: "elastic.out(1, 0.5)",
+    }, "start");
 
-        gsap.to(ball, {
-          y: dropDist,
-          duration: 1.5,
-          ease: "bounce.out",
-        });
-      }, null, "+=0.2")
-      
-      .to({}, { duration: 1.5 })
+    // Ball drop - starts slightly after entrance, runs in parallel
+    tl.add(() => {
+      if (!ball) return;
+      const ballRect = ball.getBoundingClientRect();
+      const dropDist = window.innerHeight - ballRect.bottom - 40;
 
-      .to(ball, {
-        scaleX: 1.6,
-        scaleY: 0.4,
-        duration: 0.1,
-        ease: "power2.out",
-      })
-      .to(ball, {
-        scaleX: 1,
-        scaleY: 1,
-        duration: 0.3,
-        ease: "elastic.out(1, 0.3)",
+      gsap.to(ball, {
+        y: dropDist,
+        duration: 1.2,
+        ease: "bounce.out",
       });
+    }, "start+=0.6");
+
+    // Squash effect after drop - timed to sync with drop completion
+    tl.to(ball, {
+      scaleX: 1.6,
+      scaleY: 0.4,
+      duration: 0.1,
+      ease: "power2.out",
+    }, "start+=1.8");
+
+    tl.to(ball, {
+      scaleX: 1,
+      scaleY: 1,
+      duration: 0.25,
+      ease: "elastic.out(1, 0.3)",
+    }, "start+=1.9");
   }
 
-  const exitDuration = 1.2;
+  // Exit animations - start after main animations complete
+  const exitDuration = 1;
   
   const exitTargets = [];
   if (textElement) exitTargets.push(textElement);
@@ -241,14 +249,15 @@ function initPreloader() {
       {
         y: -20,
         opacity: 0,
-        duration: 0.3,
-        stagger: 0.1,
+        duration: 0.25,
+        stagger: 0.05,
         ease: "power2.in",
       },
-      "+=0.1"
+      "start+=" + totalDuration
     );
   }
 
+  // Ball expand to fill screen
   if (ball) {
     tl.to(
       ball,
@@ -257,24 +266,25 @@ function initPreloader() {
         duration: exitDuration,
         ease: "power4.inOut",
       },
-      "<"
+      "start+=" + totalDuration
     );
   }
 
+  // Hero animations start slightly before preloader finishes
   tl.add(() => {
     playHeroAnimations();
-  }, "-=0.6")
+  }, "start+=" + (totalDuration + exitDuration - 0.4));
 
-    // Container Fade Out
-    .to(
-      container,
-      {
-        opacity: 0,
-        duration: 1,
-        ease: "power2.inOut",
-      },
-      "<"
-    );
+  // Container fade out
+  tl.to(
+    container,
+    {
+      opacity: 0,
+      duration: 0.6,
+      ease: "power2.inOut",
+    },
+    "start+=" + (totalDuration + exitDuration - 0.3)
+  );
 }
 
 initPreloader();
@@ -1070,4 +1080,32 @@ function initScrollMarquee() {
     observer.observe(marqueeScroll.parentElement);
   }
 }
+
+// VISITOR COUNTER
+function initVisitorCounter() {
+  const visitorCountEl = document.getElementById("visitor-count");
+  if (!visitorCountEl) return;
+
+  // Get stored count or initialize
+  let storedCount = localStorage.getItem("visitorCount");
+  let isNewVisitor = !sessionStorage.getItem("visited");
+
+  if (!storedCount) {
+    storedCount = Math.floor(Math.random() * 500) + 100;
+    localStorage.setItem("visitorCount", storedCount);
+  }
+
+  let count = parseInt(storedCount);
+
+  if (isNewVisitor) {
+    count++;
+    localStorage.setItem("visitorCount", count);
+    sessionStorage.setItem("visited", "true");
+  }
+
+  // Simple display
+  visitorCountEl.textContent = count.toLocaleString();
+}
+
+initVisitorCounter();
 
